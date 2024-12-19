@@ -1,0 +1,69 @@
+version: '0'
+
+services:
+  qdrant_db:
+    image: qdrant/qdrant:v1.4.1
+    # restart: always
+    container_name: qdrant_db
+    ports:
+      - 6333:6333
+      - 6334:6334
+    networks:
+      - qdrant-network
+    volumes:
+      - ./qdrant_data:/qdrant_data
+
+  mongodb:
+      image: mongo:4.0.8
+      container_name: mongo_db
+      # command: mongod --auth
+      environment:
+        # MONGO_INITDB_ROOT_USERNAME: admin
+        # MONGO_INITDB_ROOT_PASSWORD: admin
+        MONGO_INITDB_DATABASE: mongodb
+        MONGODB_DATA_DIR: /data/db
+        MONDODB_LOG_DIR: /dev/null
+      networks:
+        - qdrant-network
+      ports:
+        - 27017:27017
+      volumes: 
+        - ./mongo_data:/data
+
+  redis:
+    image: redis:latest
+    container_name: redis_db
+    # expose:
+    #   - 6379
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      # interval: 10s
+      # timeout: 30s
+      # retries: 50
+      # start_period: 30s
+    # restart: always
+    volumes:
+      - ./redis_data:/data
+    networks:
+      - qdrant-network # Them
+
+  # Build app chat
+  chatbot_app: # 1 image
+    build: ./app
+    container_name: chatbot
+    # environment:
+    #   - PYTHONPATH: .
+    ports:
+      - 5123:5123
+    networks:
+      - qdrant-network
+    depends_on:
+      - qdrant_db
+      - mongodb
+      - redis
+
+networks:
+  qdrant-network:
+    driver: bridge
